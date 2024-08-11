@@ -1,5 +1,6 @@
 package com.api_demo.apples_oranges_order_service.controllers
 
+import com.api_demo.apples_oranges_order_service.models.DiscountRequestDTO
 import com.api_demo.apples_oranges_order_service.models.OrderRequestDTO
 import com.api_demo.apples_oranges_order_service.models.OrderResponseDTO
 import org.junit.jupiter.api.BeforeEach
@@ -35,8 +36,8 @@ class OrderControllerTest {
     @BeforeEach
     fun setUp() {
         mockRequest = OrderRequestDTO(
-            numApples = 2,
-            numOranges = 2
+            numApples = 10,
+            numOranges = 10
         )
         expectedResponse = OrderResponseDTO(
             message = "Order Summary",
@@ -70,5 +71,49 @@ class OrderControllerTest {
     fun submitOrder_nullInput() {
         val testResponse = controller.submitOrder(null)
         assertEquals(exceptionNullInputResponse, testResponse)
+    }
+
+    @Test
+    fun submitOrder_withDiscountsApplied() {
+        val toggleDiscountRequest = DiscountRequestDTO(
+            appleDiscountEnabled = true,
+            orangeDiscountEnabled = true
+        )
+        controller.toggleDiscounts(toggleDiscountRequest)
+
+        val expectedWithDiscounts = expectedResponse
+        expectedWithDiscounts.priceForAllApples = 5 * priceApple
+        expectedWithDiscounts.priceForAllOranges = 7 * priceOrange
+
+        val testResponse = controller.submitOrder(mockRequest)
+        assertEquals(expectedWithDiscounts, testResponse)
+    }
+
+    @Test
+    fun toggleDiscounts_true() {
+        val toggleDiscountRequest = DiscountRequestDTO(
+            appleDiscountEnabled = true,
+            orangeDiscountEnabled = true
+        )
+        val expected = """
+                Apple Discount Enabled: true
+                Orange Discount Enabled: true
+            """.trimIndent()
+        val testResponse = controller.toggleDiscounts(toggleDiscountRequest)
+        assertEquals(expected, testResponse)
+    }
+
+    @Test
+    fun toggleDiscounts_false() {
+        val toggleDiscountRequest = DiscountRequestDTO(
+            appleDiscountEnabled = false,
+            orangeDiscountEnabled = false
+        )
+        val expected = """
+                Apple Discount Enabled: false
+                Orange Discount Enabled: false
+            """.trimIndent()
+        val testResponse = controller.toggleDiscounts(toggleDiscountRequest)
+        assertEquals(expected, testResponse)
     }
 }
