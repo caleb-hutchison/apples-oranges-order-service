@@ -1,21 +1,30 @@
 package com.api_demo.apples_oranges_order_service.controllers
 
 import com.api_demo.apples_oranges_order_service.models.DiscountRequestDTO
+import com.api_demo.apples_oranges_order_service.models.Order
 import com.api_demo.apples_oranges_order_service.models.OrderRequestDTO
 import com.api_demo.apples_oranges_order_service.models.OrderResponseDTO
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import com.api_demo.apples_oranges_order_service.services.OrderService
+import org.springframework.web.bind.annotation.*
 import java.lang.IllegalArgumentException
 
 @RestController
 @RequestMapping("/api/orders")
-class OrderController {
+class OrderController(val orderService: OrderService) {
     var enableAppleDiscount = false // buy one get one free
     var enableOrangeDiscount = false // 3 for the price of 2
     val priceApple = 0.6
     val priceOrange = 0.25
+
+    @GetMapping("")
+    fun getAllOrders(): List<Order> {
+        return orderService.getAllOrders()
+    }
+
+    @GetMapping("/{id}")
+    fun getOrderById(@PathVariable id: String): Order? {
+        return orderService.getOrderById(id)
+    }
 
     @PostMapping("/submit")
     fun submitOrder(
@@ -23,11 +32,20 @@ class OrderController {
     ): OrderResponseDTO {
         return try {
             if (inputOrderRequestDTO == null) {
-                throw IllegalArgumentException("Received null Order request.")
+                throw IllegalArgumentException(
+                    "Received null Order request.")
             }
 
             val numApplesRequested = inputOrderRequestDTO.numApples
             val numOrangesRequested = inputOrderRequestDTO.numOranges
+            if (numApplesRequested < 0) {
+                throw IllegalArgumentException(
+                    "Number of Apples must be 0 or greater.")
+            }
+            if (numOrangesRequested < 0) {
+                throw IllegalArgumentException(
+                    "Number of Oranges must be 0 or greater.")
+            }
 
             val applesTotalPrice: Double
             val orangesTotalPrice: Double
@@ -48,18 +66,26 @@ class OrderController {
                 orangesTotalPrice = numOrangesRequested * priceOrange
             }
 
+            var mappedOrder = Order(
+                id = null,
+                discountForApplesApplied = enableAppleDiscount,
+                discountForOrangesApplied = enableOrangeDiscount,
+                numberOfApples = numApplesRequested,
+                numberOfOranges = numOrangesRequested,
+                priceForAllApples = applesTotalPrice,
+                priceForAllOranges = orangesTotalPrice,
+                priceTotal = applesTotalPrice + orangesTotalPrice
+            )
+            mappedOrder = orderService.save(mappedOrder)
+
             OrderResponseDTO(
                 message = "Order Summary",
-                orderRequest = inputOrderRequestDTO,
-                priceForAllApples = applesTotalPrice,
-                priceForAllOranges = orangesTotalPrice
+                order = mappedOrder
             )
         } catch (e: IllegalArgumentException) {
             OrderResponseDTO(
                 message = e.message,
-                orderRequest = null,
-                priceForAllApples = 0.0,
-                priceForAllOranges = 0.0
+                order = null
             )
         }
     }
